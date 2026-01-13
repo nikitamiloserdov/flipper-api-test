@@ -1,0 +1,1801 @@
+{
+	"info": {
+		"_postman_id": "bc2e8e28-9792-4a10-9923-e54452dacde9",
+		"name": "Flipper API",
+		"description": "Complete API collection for Flipper DEX Backend",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "7851814"
+	},
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Позитивный. Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа один раз\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"// Проверяем, что сервис доступен (HTTP 200)\r",
+									"pm.test(\"Health: сервис отвечает успешно (200)\", () => {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"// Проверяем, что общий статус сервиса — healthy\r",
+									"pm.test(\"Health: статус сервиса — healthy\", () => {\r",
+									"    pm.expect(json.status).to.equal(\"healthy\");\r",
+									"});\r",
+									"\r",
+									"// Проверяем, что база данных доступна и работает\r",
+									"pm.test(\"Health: база данных доступна\", () => {\r",
+									"    pm.expect(json.database.status).to.equal(\"healthy\");\r",
+									"});\r",
+									"\r",
+									"// Проверяем, что Redis доступен и работает\r",
+									"pm.test(\"Health: Redis доступен\", () => {\r",
+									"    pm.expect(json.redis.status).to.equal(\"healthy\");\r",
+									"});\r",
+									"\r",
+									"// Проверяем, что ответ сервиса приходит достаточно быстро\r",
+									"pm.test(\"Health: время ответа менее 2000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tokens",
+			"item": [
+				{
+					"name": "Get Tokens",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа один раз\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверка, что эндпоинт вернул успешный HTTP-статус\r",
+									" */\r",
+									"pm.test(\"Get Tokens: сервис отвечает успешно (200)\", () => {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка, что ответ — массив токенов\r",
+									" */\r",
+									"pm.test(\"Get Tokens: ответ является массивом токенов\", () => {\r",
+									"    pm.expect(json).to.be.an(\"array\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка, что массив токенов не пустой\r",
+									" */\r",
+									"pm.test(\"Get Tokens: список токенов не пустой\", () => {\r",
+									"    pm.expect(json.length).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка обязательных полей у токена\r",
+									" * (проверяем только ключевые поля, без привязки ко всем 4000 строкам)\r",
+									" */\r",
+									"pm.test(\"Get Tokens: токен содержит обязательные поля\", () => {\r",
+									"    const token = json[0];\r",
+									"\r",
+									"    pm.expect(token).to.have.property(\"id\");\r",
+									"    pm.expect(token).to.have.property(\"mint\");\r",
+									"    pm.expect(token).to.have.property(\"name\");\r",
+									"    pm.expect(token).to.have.property(\"symbol\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка метаданных токена\r",
+									" */\r",
+									"pm.test(\"Get Tokens: метаданные токена корректны\", () => {\r",
+									"    const token = json[0];\r",
+									"\r",
+									"    pm.expect(token).to.have.property(\"metadata\");\r",
+									"    pm.expect(token.metadata).to.have.property(\"decimals\");\r",
+									"    pm.expect(token.metadata.decimals).to.be.a(\"number\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка цены токена (если присутствует)\r",
+									" */\r",
+									"pm.test(\"Get Tokens: цена токена валидна (если есть)\", () => {\r",
+									"    const token = json[0];\r",
+									"\r",
+									"    if (token.metadata?.priceUsd !== undefined) {\r",
+									"        pm.expect(token.metadata.priceUsd).to.be.a(\"number\");\r",
+									"        pm.expect(token.metadata.priceUsd).to.be.at.least(0);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка, что токен доступен для торговли (если поле присутствует)\r",
+									" */\r",
+									"pm.test(\"Get Tokens: токен доступен для торговли (если указано)\", () => {\r",
+									"    const token = json[0];\r",
+									"\r",
+									"    if (token.metadata?.isTradable !== undefined) {\r",
+									"        pm.expect(token.metadata.isTradable).to.be.a(\"boolean\");\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка времени ответа\r",
+									" */\r",
+									"pm.test(\"Get Tokens: время ответа менее 2000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/tokens?category=top-organic-score&interval=h24",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tokens"
+							],
+							"query": [
+								{
+									"key": "category",
+									"value": "top-organic-score",
+									"description": "Token category (optional)"
+								},
+								{
+									"key": "interval",
+									"value": "h24",
+									"description": "Time interval (optional)"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Tokens",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа один раз\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"// Получаем поисковый запрос из URL (?query=...)\r",
+									"const searchQuery = pm.request.url.query.find(q => q.key === \"query\")?.value?.toLowerCase();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис отвечает успешно\r",
+									" */\r",
+									"pm.test(\"Search Tokens: сервис отвечает успешно (200)\", () => {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что ответ — массив токенов\r",
+									" */\r",
+									"pm.test(\"Search Tokens: ответ является массивом\", () => {\r",
+									"    pm.expect(json).to.be.an(\"array\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что поиск возвращает результаты\r",
+									" * (допускаем пустой массив — это валидный кейс)\r",
+									" */\r",
+									"pm.test(\"Search Tokens: формат результата корректен\", () => {\r",
+									"    pm.expect(json.length).to.be.at.least(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что найденные токены соответствуют поисковому запросу\r",
+									" * Проверяем по symbol или name\r",
+									" */\r",
+									"pm.test(\"Search Tokens: результаты соответствуют поисковому запросу\", () => {\r",
+									"    if (json.length > 0 && searchQuery) {\r",
+									"        const token = json[0];\r",
+									"\r",
+									"        const name = token.name?.toLowerCase() || \"\";\r",
+									"        const symbol = token.symbol?.toLowerCase() || \"\";\r",
+									"\r",
+									"        pm.expect(\r",
+									"            name.includes(searchQuery) || symbol.includes(searchQuery)\r",
+									"        ).to.be.true;\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем обязательные поля у найденного токена\r",
+									" */\r",
+									"pm.test(\"Search Tokens: токен содержит обязательные поля\", () => {\r",
+									"    if (json.length > 0) {\r",
+									"        const token = json[0];\r",
+									"\r",
+									"        pm.expect(token).to.have.property(\"id\");\r",
+									"        pm.expect(token).to.have.property(\"mint\");\r",
+									"        pm.expect(token).to.have.property(\"name\");\r",
+									"        pm.expect(token).to.have.property(\"symbol\");\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что метаданные токена присутствуют и валидны\r",
+									" */\r",
+									"pm.test(\"Search Tokens: метаданные токена корректны\", () => {\r",
+									"    if (json.length > 0) {\r",
+									"        const token = json[0];\r",
+									"\r",
+									"        pm.expect(token).to.have.property(\"metadata\");\r",
+									"        pm.expect(token.metadata).to.have.property(\"decimals\");\r",
+									"        pm.expect(token.metadata.decimals).to.be.a(\"number\");\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что цена токена валидна (если присутствует)\r",
+									" */\r",
+									"pm.test(\"Search Tokens: цена токена валидна (если есть)\", () => {\r",
+									"    if (json.length > 0 && tokenHasPrice(json[0])) {\r",
+									"        pm.expect(json[0].metadata.priceUsd).to.be.a(\"number\");\r",
+									"        pm.expect(json[0].metadata.priceUsd).to.be.at.least(0);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа сервиса\r",
+									" */\r",
+									"pm.test(\"Search Tokens: время ответа менее 2000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+									"});\r",
+									"\r",
+									"\r",
+									"/**\r",
+									" * Вспомогательная функция:\r",
+									" * проверяет, есть ли цена у токена\r",
+									" */\r",
+									"function tokenHasPrice(token) {\r",
+									"    return token.metadata && token.metadata.priceUsd !== undefined;\r",
+									"}\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/tokens/search?query=SOL",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tokens",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "SOL",
+									"description": "Search query string"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Token Holders",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа один раз\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис отвечает успешно\r",
+									" */\r",
+									"pm.test(\"Token Holders: сервис отвечает успешно (200)\", () => {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем базовую структуру ответа\r",
+									" */\r",
+									"pm.test(\"Token Holders: структура ответа корректна\", () => {\r",
+									"    pm.expect(json).to.be.an(\"object\");\r",
+									"\r",
+									"    pm.expect(json).to.have.property(\"page\");\r",
+									"    pm.expect(json).to.have.property(\"cursor\");\r",
+									"    pm.expect(json).to.have.property(\"pageSize\");\r",
+									"    pm.expect(json).to.have.property(\"totalSupply\");\r",
+									"    pm.expect(json).to.have.property(\"result\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что результат — массив холдеров\r",
+									" */\r",
+									"pm.test(\"Token Holders: результат является массивом\", () => {\r",
+									"    pm.expect(json.result).to.be.an(\"array\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что totalSupply — положительное число (строка или number)\r",
+									" */\r",
+									"pm.test(\"Token Holders: totalSupply валиден\", () => {\r",
+									"    const supply = Number(json.totalSupply);\r",
+									"    pm.expect(supply).to.be.a(\"number\");\r",
+									"    pm.expect(supply).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем элементы холдеров, если они есть\r",
+									" * (пустой массив — валидный кейс)\r",
+									" */\r",
+									"pm.test(\"Token Holders: данные холдера корректны (если есть)\", () => {\r",
+									"    if (json.result.length > 0) {\r",
+									"        const holder = json.result[0];\r",
+									"\r",
+									"        pm.expect(holder).to.have.property(\"address\");\r",
+									"        pm.expect(holder).to.have.property(\"balance\");\r",
+									"\r",
+									"        pm.expect(Number(holder.balance)).to.be.at.least(0);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"Token Holders: время ответа менее 2000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/tokens/{{mint_account}}/holders",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tokens",
+								"{{mint_account}}",
+								"holders"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Token Prices",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа один раз\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис отвечает успешно\r",
+									" */\r",
+									"pm.test(\"Token Prices: сервис отвечает успешно (200)\", () => {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что ответ — объект\r",
+									" */\r",
+									"pm.test(\"Token Prices: ответ является объектом\", () => {\r",
+									"    pm.expect(json).to.be.an(\"object\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем базовые поля токена\r",
+									" */\r",
+									"pm.test(\"Token Prices: базовые поля токена присутствуют\", () => {\r",
+									"    pm.expect(json).to.have.property(\"tokenAddress\");\r",
+									"    pm.expect(json).to.have.property(\"symbol\");\r",
+									"    pm.expect(json).to.have.property(\"name\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем информацию о бирже\r",
+									" */\r",
+									"pm.test(\"Token Prices: информация о бирже корректна\", () => {\r",
+									"    pm.expect(json).to.have.property(\"exchangeName\");\r",
+									"    pm.expect(json).to.have.property(\"exchangeAddress\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем USD-цену токена\r",
+									" */\r",
+									"pm.test(\"Token Prices: USD цена валидна\", () => {\r",
+									"    pm.expect(json).to.have.property(\"usdPrice\");\r",
+									"    pm.expect(json.usdPrice).to.be.a(\"number\");\r",
+									"    pm.expect(json.usdPrice).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем изменение цены за 24 часа\r",
+									" */\r",
+									"pm.test(\"Token Prices: изменение цены за 24 часа валидно\", () => {\r",
+									"    pm.expect(json).to.have.property(\"usdPrice24h\");\r",
+									"    pm.expect(json).to.have.property(\"usdPrice24hrPercentChange\");\r",
+									"\r",
+									"    pm.expect(json.usdPrice24h).to.be.a(\"number\");\r",
+									"    pm.expect(json.usdPrice24hrPercentChange).to.be.a(\"number\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем native-цену токена\r",
+									" */\r",
+									"pm.test(\"Token Prices: native цена токена корректна\", () => {\r",
+									"    pm.expect(json).to.have.property(\"nativePrice\");\r",
+									"\r",
+									"    pm.expect(json.nativePrice).to.have.property(\"decimals\");\r",
+									"    pm.expect(json.nativePrice).to.have.property(\"symbol\");\r",
+									"    pm.expect(json.nativePrice).to.have.property(\"value\");\r",
+									"\r",
+									"    pm.expect(Number(json.nativePrice.value)).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем флаг верификации контракта\r",
+									" */\r",
+									"pm.test(\"Token Prices: контракт токена верифицирован (если указано)\", () => {\r",
+									"    if (json.isVerifiedContract !== undefined) {\r",
+									"        pm.expect(json.isVerifiedContract).to.be.a(\"boolean\");\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"Token Prices: время ответа менее 2000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/tokens/{{mint_account}}/prices",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tokens",
+								"{{mint_account}}",
+								"prices"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Token Analytics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа один раз\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис отвечает успешно\r",
+									" */\r",
+									"pm.test(\"Token Analytics: сервис отвечает успешно (200)\", () => {\r",
+									"    pm.response.to.have.status(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что ответ является объектом\r",
+									" */\r",
+									"pm.test(\"Token Analytics: ответ является объектом\", () => {\r",
+									"    pm.expect(json).to.be.an(\"object\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что адрес токена присутствует\r",
+									" */\r",
+									"pm.test(\"Token Analytics: адрес токена присутствует\", () => {\r",
+									"    pm.expect(json).to.have.property(\"tokenAddress\");\r",
+									"    pm.expect(json.tokenAddress).to.be.a(\"string\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем изменение цены во времени\r",
+									" */\r",
+									"pm.test(\"Token Analytics: изменение цены валидно\", () => {\r",
+									"    pm.expect(json).to.have.property(\"pricePercentChange\");\r",
+									"\r",
+									"    const priceChange = json.pricePercentChange;\r",
+									"\r",
+									"    pm.expect(priceChange).to.have.property(\"5m\");\r",
+									"    pm.expect(priceChange).to.have.property(\"1h\");\r",
+									"    pm.expect(priceChange).to.have.property(\"6h\");\r",
+									"    pm.expect(priceChange).to.have.property(\"24h\");\r",
+									"\r",
+									"    pm.expect(priceChange[\"5m\"]).to.be.a(\"number\");\r",
+									"    pm.expect(priceChange[\"1h\"]).to.be.a(\"number\");\r",
+									"    pm.expect(priceChange[\"6h\"]).to.be.a(\"number\");\r",
+									"    pm.expect(priceChange[\"24h\"]).to.be.a(\"number\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем объёмы покупок\r",
+									" */\r",
+									"pm.test(\"Token Analytics: объёмы покупок валидны\", () => {\r",
+									"    pm.expect(json).to.have.property(\"totalBuyVolume\");\r",
+									"\r",
+									"    const volume = json.totalBuyVolume;\r",
+									"\r",
+									"    pm.expect(volume[\"5m\"]).to.be.a(\"number\");\r",
+									"    pm.expect(volume[\"1h\"]).to.be.a(\"number\");\r",
+									"    pm.expect(volume[\"6h\"]).to.be.a(\"number\");\r",
+									"    pm.expect(volume[\"24h\"]).to.be.a(\"number\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем количество покупателей\r",
+									" */\r",
+									"pm.test(\"Token Analytics: количество покупателей валидно\", () => {\r",
+									"    pm.expect(json).to.have.property(\"totalBuyers\");\r",
+									"\r",
+									"    const buyers = json.totalBuyers;\r",
+									"\r",
+									"    pm.expect(buyers[\"5m\"]).to.be.a(\"number\");\r",
+									"    pm.expect(buyers[\"1h\"]).to.be.a(\"number\");\r",
+									"    pm.expect(buyers[\"6h\"]).to.be.a(\"number\");\r",
+									"    pm.expect(buyers[\"24h\"]).to.be.a(\"number\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем ликвидность и FDV\r",
+									" */\r",
+									"pm.test(\"Token Analytics: ликвидность и FDV валидны\", () => {\r",
+									"    const liquidity = Number(json.totalLiquidityUsd);\r",
+									"    const fdv = Number(json.totalFullyDilutedValuation);\r",
+									"\r",
+									"    pm.expect(liquidity).to.be.a(\"number\");\r",
+									"    pm.expect(liquidity).to.be.at.least(0);\r",
+									"\r",
+									"    pm.expect(fdv).to.be.a(\"number\");\r",
+									"    pm.expect(fdv).to.be.at.least(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем уникальные кошельки\r",
+									" */\r",
+									"pm.test(\"Token Analytics: уникальные кошельки валидны\", () => {\r",
+									"    pm.expect(json).to.have.property(\"uniqueWallets\");\r",
+									"\r",
+									"    const wallets = json.uniqueWallets;\r",
+									"\r",
+									"    pm.expect(wallets[\"5m\"]).to.be.a(\"number\");\r",
+									"    pm.expect(wallets[\"1h\"]).to.be.a(\"number\");\r",
+									"    pm.expect(wallets[\"6h\"]).to.be.a(\"number\");\r",
+									"    pm.expect(wallets[\"24h\"]).to.be.a(\"number\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем USD цену токена\r",
+									" */\r",
+									"pm.test(\"Token Analytics: USD цена токена валидна\", () => {\r",
+									"    const price = Number(json.usdPrice);\r",
+									"\r",
+									"    pm.expect(price).to.be.a(\"number\");\r",
+									"    pm.expect(price).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"Token Analytics: время ответа менее 2000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/tokens/{{mint_account}}/analytics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"tokens",
+								"{{mint_account}}",
+								"analytics"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Markets",
+			"item": [
+				{
+					"name": "Get Market Cache",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const json = pm.response.json();\r",
+									"\r",
+									"pm.test(\"Market Cache: сервис отвечает с кодом 200\", () => {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис вернул массив market cache\r",
+									" */\r",
+									"pm.test(\"Market Cache: ответ является массивом\", () => {\r",
+									"    pm.expect(json).to.be.an(\"array\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что market cache не пустой\r",
+									" */\r",
+									"pm.test(\"Market Cache: список рынков не пустой\", () => {\r",
+									"    pm.expect(json.length).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем структуру каждого market cache элемента\r",
+									" */\r",
+									"pm.test(\"Market Cache: структура элементов валидна\", () => {\r",
+									"    json.forEach((item, index) => {\r",
+									"\r",
+									"        // pubkey\r",
+									"        pm.expect(item, `pubkey отсутствует [${index}]`).to.have.property(\"pubkey\");\r",
+									"        pm.expect(item.pubkey).to.be.a(\"string\");\r",
+									"\r",
+									"        // owner\r",
+									"        pm.expect(item, `owner отсутствует [${index}]`).to.have.property(\"owner\");\r",
+									"        pm.expect(item.owner).to.be.a(\"string\");\r",
+									"\r",
+									"        // data\r",
+									"        pm.expect(item, `data отсутствует [${index}]`).to.have.property(\"data\");\r",
+									"        pm.expect(item.data).to.be.an(\"array\");\r",
+									"        pm.expect(item.data.length).to.equal(2);\r",
+									"\r",
+									"        pm.expect(item.data[0]).to.be.a(\"string\");\r",
+									"        pm.expect(item.data[1]).to.be.a(\"string\");\r",
+									"\r",
+									"        // params\r",
+									"        pm.expect(item, `params отсутствует [${index}]`).to.have.property(\"params\");\r",
+									"        pm.expect(item.params).to.be.an(\"object\");\r",
+									"\r",
+									"        // routingGroup\r",
+									"        pm.expect(item.params).to.have.property(\"routingGroup\");\r",
+									"        pm.expect(item.params.routingGroup).to.be.a(\"number\");\r",
+									"\r",
+									"        // swapAccountSize\r",
+									"        pm.expect(item.params).to.have.property(\"swapAccountSize\");\r",
+									"        pm.expect(item.params.swapAccountSize).to.be.an(\"object\");\r",
+									"\r",
+									"        pm.expect(item.params.swapAccountSize).to.have.property(\"account_len\");\r",
+									"        pm.expect(item.params.swapAccountSize.account_len).to.be.a(\"number\");\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"Market Cache: время ответа менее 3000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(3000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/markets",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"markets"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Pairs",
+			"item": [
+				{
+					"name": "Get Pair Candlesticks",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис ответил успешно\r",
+									" */\r",
+									"pm.test(\"Candlesticks: сервис отвечает с кодом 200\", () => {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем базовую структуру ответа\r",
+									" */\r",
+									"pm.test(\"Candlesticks: базовая структура ответа корректна\", () => {\r",
+									"    pm.expect(json).to.have.property(\"cursor\");\r",
+									"    pm.expect(json).to.have.property(\"page\");\r",
+									"    pm.expect(json).to.have.property(\"pairAddress\");\r",
+									"    pm.expect(json).to.have.property(\"timeframe\");\r",
+									"    pm.expect(json).to.have.property(\"currency\");\r",
+									"    pm.expect(json).to.have.property(\"result\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем типы ключевых полей\r",
+									" */\r",
+									"pm.test(\"Candlesticks: типы полей корректны\", () => {\r",
+									"    pm.expect(json.page).to.be.a(\"number\");\r",
+									"    pm.expect(json.pairAddress).to.be.a(\"string\");\r",
+									"    pm.expect(json.timeframe).to.be.a(\"string\");\r",
+									"    pm.expect(json.currency).to.be.a(\"string\");\r",
+									"    pm.expect(json.result).to.be.an(\"array\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем согласованность параметров запроса и ответа\r",
+									" */\r",
+									"pm.test(\"Candlesticks: параметры ответа соответствуют запросу\", () => {\r",
+									"    pm.expect(json.timeframe).to.equal(\"1h\");\r",
+									"    pm.expect(json.currency).to.equal(\"usd\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Если свечи есть — проверяем их структуру\r",
+									" */\r",
+									"pm.test(\"Candlesticks: структура свечей корректна (если данные есть)\", () => {\r",
+									"    if (json.result.length > 0) {\r",
+									"        json.result.forEach((candle, index) => {\r",
+									"            pm.expect(candle, `timestamp отсутствует [${index}]`).to.have.property(\"timestamp\");\r",
+									"            pm.expect(candle.timestamp).to.be.a(\"number\");\r",
+									"\r",
+									"            pm.expect(candle).to.have.property(\"open\");\r",
+									"            pm.expect(candle).to.have.property(\"high\");\r",
+									"            pm.expect(candle).to.have.property(\"low\");\r",
+									"            pm.expect(candle).to.have.property(\"close\");\r",
+									"            pm.expect(candle).to.have.property(\"volume\");\r",
+									"\r",
+									"            pm.expect(candle.open).to.be.a(\"number\");\r",
+									"            pm.expect(candle.high).to.be.a(\"number\");\r",
+									"            pm.expect(candle.low).to.be.a(\"number\");\r",
+									"            pm.expect(candle.close).to.be.a(\"number\");\r",
+									"            pm.expect(candle.volume).to.be.a(\"number\");\r",
+									"        });\r",
+									"    } else {\r",
+									"        pm.expect(json.result.length).to.equal(0);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"Candlesticks: время ответа менее 3000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(3000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/pairs/8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj/candlesticks?timeFrame=1h&currency=usd&fromDate=2024-01-01&toDate=2024-01-31&limit=100",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"pairs",
+								"8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
+								"candlesticks"
+							],
+							"query": [
+								{
+									"key": "timeFrame",
+									"value": "1h",
+									"description": "Time frame (e.g., 1h, 4h, 1d)"
+								},
+								{
+									"key": "currency",
+									"value": "usd",
+									"description": "Currency"
+								},
+								{
+									"key": "fromDate",
+									"value": "2024-01-01",
+									"description": "Start date (YYYY-MM-DD)"
+								},
+								{
+									"key": "toDate",
+									"value": "2024-01-31",
+									"description": "End date (YYYY-MM-DD)"
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Maximum number of results"
+								},
+								{
+									"key": "cursor",
+									"value": "",
+									"description": "Pagination cursor (optional)",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Pairs by Tokens",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис ответил успешно\r",
+									" */\r",
+									"pm.test(\"Search Pairs by Token: сервис отвечает с кодом 200\", () => {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что ответ является объектом\r",
+									" */\r",
+									"pm.test(\"Search Pairs by Token: ответ является объектом\", () => {\r",
+									"    pm.expect(json).to.be.an(\"object\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем наличие pairAddress (если пара найдена)\r",
+									" */\r",
+									"pm.test(\"Search Pairs by Token: pairAddress присутствует и валиден (если найден)\", () => {\r",
+									"    if (json.pairAddress !== undefined && json.pairAddress !== null) {\r",
+									"        pm.expect(json.pairAddress).to.be.a(\"string\");\r",
+									"        pm.expect(json.pairAddress.length).to.be.above(10);\r",
+									"    } else {\r",
+									"        pm.expect(json).to.not.have.property(\"pairAddress\");\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что pairAddress не пустая строка\r",
+									" */\r",
+									"pm.test(\"Search Pairs by Token: pairAddress не пустой\", () => {\r",
+									"    if (json.pairAddress) {\r",
+									"        pm.expect(json.pairAddress.trim().length).to.be.above(0);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"Search Pairs by Token: время ответа менее 2000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/pairs/search?tokenA=So11111111111111111111111111111111111111112&tokenB=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"pairs",
+								"search"
+							],
+							"query": [
+								{
+									"key": "tokenA",
+									"value": "So11111111111111111111111111111111111111112",
+									"description": "First token mint address"
+								},
+								{
+									"key": "tokenB",
+									"value": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+									"description": "Second token mint address"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Wallet",
+			"item": [
+				{
+					"name": "Get Wallet Balance",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа один раз\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис отвечает успешно\r",
+									" */\r",
+									"pm.test(\"Wallet Balance: сервис отвечает с кодом 200\", () => {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем базовую структуру ответа\r",
+									" */\r",
+									"pm.test(\"Wallet Balance: базовая структура ответа корректна\", () => {\r",
+									"    pm.expect(json).to.have.property(\"wallet\");\r",
+									"    pm.expect(json).to.have.property(\"tokens\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем типы ключевых полей\r",
+									" */\r",
+									"pm.test(\"Wallet Balance: типы полей корректны\", () => {\r",
+									"    pm.expect(json.wallet).to.be.a(\"string\");\r",
+									"    pm.expect(json.tokens).to.be.an(\"array\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что адрес кошелька не пустой\r",
+									" */\r",
+									"pm.test(\"Wallet Balance: адрес кошелька валиден\", () => {\r",
+									"    pm.expect(json.wallet.trim().length).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем структуру токена в списке (если токены есть)\r",
+									" */\r",
+									"pm.test(\"Wallet Balance: структура токена корректна (если есть)\", () => {\r",
+									"    if (json.tokens.length > 0) {\r",
+									"        const token = json.tokens[0];\r",
+									"\r",
+									"        pm.expect(token).to.have.property(\"mintAccount\");\r",
+									"        pm.expect(token).to.have.property(\"tokenAddress\");\r",
+									"        pm.expect(token).to.have.property(\"mintAmount\");\r",
+									"        pm.expect(token).to.have.property(\"formattedAmount\");\r",
+									"        pm.expect(token).to.have.property(\"decimals\");\r",
+									"\r",
+									"        pm.expect(token.mintAccount).to.be.a(\"string\");\r",
+									"        pm.expect(token.tokenAddress).to.be.a(\"string\");\r",
+									"        pm.expect(token.mintAmount).to.be.a(\"number\");\r",
+									"        pm.expect(token.formattedAmount).to.be.a(\"string\");\r",
+									"        pm.expect(token.decimals).to.be.a(\"number\");\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что количество токенов не отрицательное\r",
+									" */\r",
+									"pm.test(\"Wallet Balance: количество токенов валидно\", () => {\r",
+									"    if (json.tokens.length > 0) {\r",
+									"        const token = json.tokens[0];\r",
+									"        pm.expect(token.mintAmount).to.be.at.least(0);\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем символ и имя токена (если указаны)\r",
+									" */\r",
+									"pm.test(\"Wallet Balance: символ и имя токена валидны (если есть)\", () => {\r",
+									"    if (json.tokens.length > 0) {\r",
+									"        const token = json.tokens[0];\r",
+									"\r",
+									"        if (token.symbol !== undefined) {\r",
+									"            pm.expect(token.symbol).to.be.a(\"string\");\r",
+									"        }\r",
+									"\r",
+									"        if (token.name !== undefined) {\r",
+									"            pm.expect(token.name).to.be.a(\"string\");\r",
+									"        }\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"Wallet Balance: время ответа менее 3000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(3000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/wallet/{{wallet_account}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"wallet",
+								"{{wallet_account}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "My Wallet Balance",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа один раз\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис отвечает успешно\r",
+									" */\r",
+									"pm.test(\"My Wallet Balance: сервис отвечает с кодом 200\", () => {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем формат JSON-RPC ответа\r",
+									" */\r",
+									"pm.test(\"My Wallet Balance: формат JSON-RPC корректен\", () => {\r",
+									"    pm.expect(json).to.have.property(\"jsonrpc\");\r",
+									"    pm.expect(json).to.have.property(\"result\");\r",
+									"    pm.expect(json).to.have.property(\"id\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем наличие значения баланса\r",
+									" */\r",
+									"pm.test(\"My Wallet Balance: баланс присутствует\", () => {\r",
+									"    pm.expect(json.result).to.have.property(\"value\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что баланс является числом\r",
+									" */\r",
+									"pm.test(\"My Wallet Balance: баланс является числом\", () => {\r",
+									"    pm.expect(json.result.value).to.be.a(\"number\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что баланс не отрицательный\r",
+									" */\r",
+									"pm.test(\"My Wallet Balance: баланс не отрицательный\", () => {\r",
+									"    pm.expect(json.result.value).to.be.at.least(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем наличие контекста RPC\r",
+									" */\r",
+									"pm.test(\"My Wallet Balance: контекст RPC присутствует\", () => {\r",
+									"    pm.expect(json.result).to.have.property(\"context\");\r",
+									"    pm.expect(json.result.context).to.have.property(\"slot\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"My Wallet Balance: время ответа менее 2000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": " \r\n  {\r\n    \"jsonrpc\": \"2.0\",\r\n    \"id\": 1,\r\n    \"method\": \"getBalance\",\r\n    \"params\": [\r\n      \"H3CUjuQsCwCUXA9RMLu9DqE2ZVotNfnoKvaPrwdggfuz\",\r\n      {\r\n        \"commitment\": \"finalized\"\r\n      }\r\n    ]\r\n  }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.devnet.solana.com",
+							"protocol": "https",
+							"host": [
+								"api",
+								"devnet",
+								"solana",
+								"com"
+							]
+						},
+						"description": "Generated from cURL: curl https://api.devnet.solana.com -s -X \\\r\n  POST -H \"Content-Type: application/json\" -d ' \r\n  {\r\n    \"jsonrpc\": \"2.0\",\r\n    \"id\": 1,\r\n    \"method\": \"getBalance\",\r\n    \"params\": [\r\n      \"83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri\",\r\n      {\r\n        \"commitment\": \"finalized\"\r\n      }\r\n    ]\r\n  }\r\n'"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Adapters",
+			"item": [
+				{
+					"name": "Get Adapters",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Разбираем тело ответа\r",
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что сервис отвечает успешно\r",
+									" */\r",
+									"pm.test(\"Adapters: сервис отвечает с кодом 200\", () => {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что ответ — массив адаптеров\r",
+									" */\r",
+									"pm.test(\"Adapters: ответ является массивом\", () => {\r",
+									"    pm.expect(json).to.be.an(\"array\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что список адаптеров не пустой\r",
+									" */\r",
+									"pm.test(\"Adapters: список адаптеров не пустой\", () => {\r",
+									"    pm.expect(json.length).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем структуру адаптера\r",
+									" */\r",
+									"pm.test(\"Adapters: структура адаптера корректна\", () => {\r",
+									"    json.forEach((adapter, index) => {\r",
+									"        pm.expect(adapter, `dexId отсутствует [${index}]`).to.have.property(\"dexId\");\r",
+									"        pm.expect(adapter, `name отсутствует [${index}]`).to.have.property(\"name\");\r",
+									"        pm.expect(adapter, `poolAddresses отсутствует [${index}]`).to.have.property(\"poolAddresses\");\r",
+									"\r",
+									"        pm.expect(adapter.dexId).to.be.a(\"string\");\r",
+									"        pm.expect(adapter.name).to.be.a(\"string\");\r",
+									"        pm.expect(adapter.poolAddresses).to.be.an(\"array\");\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем poolAddresses (если есть)\r",
+									" */\r",
+									"pm.test(\"Adapters: poolAddresses содержит корректные значения (если есть)\", () => {\r",
+									"    json.forEach((adapter, index) => {\r",
+									"        if (adapter.poolAddresses.length > 0) {\r",
+									"            adapter.poolAddresses.forEach((address, addrIndex) => {\r",
+									"                pm.expect(\r",
+									"                    address,\r",
+									"                    `Невалидный адрес пула [${index}:${addrIndex}]`\r",
+									"                ).to.be.a(\"string\");\r",
+									"            });\r",
+									"        }\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем, что dexId и name не пустые\r",
+									" */\r",
+									"pm.test(\"Adapters: dexId и name не пустые\", () => {\r",
+									"    json.forEach((adapter, index) => {\r",
+									"        pm.expect(adapter.dexId.trim().length, `dexId пустой [${index}]`).to.be.above(0);\r",
+									"        pm.expect(adapter.name.trim().length, `name пустое [${index}]`).to.be.above(0);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверяем время ответа\r",
+									" */\r",
+									"pm.test(\"Adapters: время ответа менее 3000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(3000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/adapters",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"adapters"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Swap",
+			"item": [
+				{
+					"name": "Get Quote",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверка: сервис успешно вернул quote\r",
+									" */\r",
+									"pm.test(\"Quote: сервис отвечает с кодом 200\", () => {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: основные поля присутствуют\r",
+									" */\r",
+									"pm.test(\"Quote: основные поля присутствуют\", () => {\r",
+									"    pm.expect(json).to.have.property(\"inputMint\");\r",
+									"    pm.expect(json).to.have.property(\"outputMint\");\r",
+									"    pm.expect(json).to.have.property(\"inAmount\");\r",
+									"    pm.expect(json).to.have.property(\"outAmount\");\r",
+									"    pm.expect(json).to.have.property(\"swapMode\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: входная и выходная суммы валидны\r",
+									" */\r",
+									"pm.test(\"Quote: суммы обмена валидны\", () => {\r",
+									"    pm.expect(json.inAmount).to.match(/^\\d+$/);\r",
+									"    pm.expect(json.outAmount).to.match(/^\\d+$/);\r",
+									"\r",
+									"    pm.expect(Number(json.inAmount)).to.be.above(0);\r",
+									"    pm.expect(Number(json.outAmount)).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: slippage и threshold заданы корректно\r",
+									" */\r",
+									"pm.test(\"Quote: slippage и минимальная сумма корректны\", () => {\r",
+									"    pm.expect(json.slippageBps).to.be.a(\"number\");\r",
+									"    pm.expect(json.slippageBps).to.be.above(0);\r",
+									"\r",
+									"    pm.expect(json.otherAmountThreshold).to.match(/^\\d+$/);\r",
+									"    pm.expect(Number(json.otherAmountThreshold))\r",
+									"        .to.be.below(Number(json.outAmount));\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: price impact валиден\r",
+									" */\r",
+									"pm.test(\"Quote: price impact корректен\", () => {\r",
+									"    pm.expect(json.priceImpactPct).to.match(/^\\d*\\.?\\d+$/);\r",
+									"    pm.expect(Number(json.priceImpactPct)).to.be.at.least(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: маршрут обмена присутствует\r",
+									" */\r",
+									"pm.test(\"Quote: маршрут обмена присутствует\", () => {\r",
+									"    pm.expect(json.routePlan).to.be.an(\"array\");\r",
+									"    pm.expect(json.routePlan.length).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: структура routePlan\r",
+									" */\r",
+									"pm.test(\"Quote: структура маршрута корректна\", () => {\r",
+									"    json.routePlan.forEach((route, index) => {\r",
+									"        pm.expect(route).to.have.property(\"percent\");\r",
+									"        pm.expect(route).to.have.property(\"swapInfo\");\r",
+									"\r",
+									"        pm.expect(route.percent).to.be.a(\"number\");\r",
+									"        pm.expect(route.swapInfo).to.have.property(\"ammKey\");\r",
+									"        pm.expect(route.swapInfo).to.have.property(\"inAmount\");\r",
+									"        pm.expect(route.swapInfo).to.have.property(\"outAmount\");\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: время ответа\r",
+									" */\r",
+									"pm.test(\"Quote: время ответа менее 3000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(3000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/swap/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB&amount=1000000000&slippageBps=50",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"swap",
+								"quote"
+							],
+							"query": [
+								{
+									"key": "inputMint",
+									"value": "So11111111111111111111111111111111111111112",
+									"description": "Input token mint address"
+								},
+								{
+									"key": "outputMint",
+									"value": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+									"description": "Output token mint address"
+								},
+								{
+									"key": "amount",
+									"value": "1000000000",
+									"description": "Input amount in smallest unit"
+								},
+								{
+									"key": "slippageBps",
+									"value": "50",
+									"description": "Slippage in basis points (1 bps = 0.01%)"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Swap Instructions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const json = pm.response.json();\r",
+									"\r",
+									"/**\r",
+									" * Проверка: сервис успешно вернул инструкции\r",
+									" */\r",
+									"pm.test(\"Swap instructions: сервис отвечает с кодом 200\", () => {\r",
+									"    pm.expect(pm.response.code).to.equal(200);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: основной объект swapInstruction присутствует\r",
+									" */\r",
+									"pm.test(\"Swap instructions: основная swap-инструкция присутствует\", () => {\r",
+									"    pm.expect(json).to.have.property(\"swapInstruction\");\r",
+									"    pm.expect(json.swapInstruction).to.be.an(\"object\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: swapInstruction содержит базовую структуру\r",
+									" */\r",
+									"pm.test(\"Swap instructions: структура swapInstruction корректна\", () => {\r",
+									"    pm.expect(json.swapInstruction).to.have.property(\"programId\");\r",
+									"    pm.expect(json.swapInstruction).to.have.property(\"accounts\");\r",
+									"    pm.expect(json.swapInstruction).to.have.property(\"data\");\r",
+									"\r",
+									"    pm.expect(json.swapInstruction.accounts).to.be.an(\"array\");\r",
+									"    pm.expect(json.swapInstruction.accounts.length).to.be.above(0);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: setupInstructions корректны (если есть)\r",
+									" */\r",
+									"pm.test(\"Swap instructions: setupInstructions корректны\", () => {\r",
+									"    pm.expect(json).to.have.property(\"setupInstructions\");\r",
+									"    pm.expect(json.setupInstructions).to.be.an(\"array\");\r",
+									"\r",
+									"    json.setupInstructions.forEach(instr => {\r",
+									"        pm.expect(instr).to.have.property(\"programId\");\r",
+									"        pm.expect(instr).to.have.property(\"accounts\");\r",
+									"        pm.expect(instr).to.have.property(\"data\");\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: cleanupInstruction корректен (если есть)\r",
+									" */\r",
+									"pm.test(\"Swap instructions: cleanupInstruction корректен или отсутствует\", () => {\r",
+									"    if (json.cleanupInstruction !== null) {\r",
+									"        pm.expect(json.cleanupInstruction).to.have.property(\"programId\");\r",
+									"        pm.expect(json.cleanupInstruction).to.have.property(\"accounts\");\r",
+									"        pm.expect(json.cleanupInstruction).to.have.property(\"data\");\r",
+									"    }\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: ошибок симуляции нет\r",
+									" */\r",
+									"pm.test(\"Swap instructions: ошибки симуляции отсутствуют\", () => {\r",
+									"    pm.expect(json.simulationError).to.equal(null);\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: массив адресов lookup table валиден\r",
+									" */\r",
+									"pm.test(\"Swap instructions: lookup table адреса валидны\", () => {\r",
+									"    pm.expect(json.addressLookupTableAddresses).to.be.an(\"array\");\r",
+									"});\r",
+									"\r",
+									"/**\r",
+									" * Проверка: время ответа\r",
+									" */\r",
+									"pm.test(\"Swap instructions: время ответа менее 5000 мс\", () => {\r",
+									"    pm.expect(pm.response.responseTime).to.be.below(5000);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userPublicKey\": \"{{wallet_account}}\",\n  \"quoteResponse\": {\n    \"inputMint\": \"So11111111111111111111111111111111111111112\",\n    \"inAmount\": \"1000000000\",\n    \"outputMint\": \"Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB\",\n    \"outAmount\": \"138020881\",\n    \"otherAmountThreshold\": \"138020881\",\n    \"swapMode\": \"ExactIn\",\n    \"slippageBps\": 0,\n    \"platformFee\": null,\n    \"priceImpactPct\": \"0.0002583971358843749906291327\",\n    \"routePlan\": [\n        {\n            \"swapInfo\": {\n                \"ammKey\": \"FwewVm8u6tFPGewAyHmWAqad9hmF7mvqxK4mJ7iNqqGC\",\n                \"label\": \"Whirlpool\",\n                \"inputMint\": \"So11111111111111111111111111111111111111112\",\n                \"outputMint\": \"Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB\",\n                \"inAmount\": \"1000000000\",\n                \"outAmount\": \"138020881\",\n                \"feeAmount\": \"0\",\n                \"feeMint\": \"So11111111111111111111111111111111111111112\"\n            },\n            \"percent\": 100\n        }\n    ],\n     \"contextSlot\": 391909871,\n    \"timeTaken\": 0.00054021\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/swap/swap-instructions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"swap",
+								"swap-instructions"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"maker\": \"{{wallet_account}}\",\n  \"inputMint\": \"So11111111111111111111111111111111111111112\",\n  \"outputMint\": \"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v\",\n  \"inputAmount\": 1000000000,\n  \"outputAmount\": 150000000,\n  \"expiry\": 1767786131506,\n  \"slippageBps\": 50,\n  \"targetPriceBps\": 15000,\n  \"orderType\": \"takeProfit\",\n  \"wrapAndUnwrapSol\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/orders",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"orders"
+							]
+						},
+						"description": "orderType can be: 'takeProfit', 'stopLoss', or 'instant'"
+					},
+					"response": []
+				},
+				{
+					"name": "Route and Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"maker\": \"{{wallet_account}}\",\n  \"inputMint\": \"So11111111111111111111111111111111111111112\",\n  \"outputMint\": \"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v\",\n  \"inputAmount\": 1000000000,\n  \"outputAmount\": 150000000,\n  \"expiry\": 1735689600,\n  \"slippageBps\": 50,\n  \"targetPriceBps\": 15000,\n  \"orderType\": \"takeProfit\",\n  \"quoteResponse\": {\n    \"inAmount\": \"1000000000\",\n    \"outAmount\": \"150000000\",\n    \"platformFee\": {\n      \"feeBps\": 10\n    }\n  },\n  \"wrapAndUnwrapSol\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/orders/closing/route-and-create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"orders",
+								"closing",
+								"route-and-create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/orders/{{order_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"orders",
+								"{{order_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/orders?maker=CqN8BpNFhFZDnbLdpUaLUEHGrFymnP8TBcCfQhC8pFYA",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"orders"
+							],
+							"query": [
+								{
+									"key": "maker",
+									"value": "CqN8BpNFhFZDnbLdpUaLUEHGrFymnP8TBcCfQhC8pFYA",
+									"description": "Maker wallet address"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Order",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/orders/F29rnnqLSfV8BhwBB2ZtL7K1zuDjPimwN6LCW4w6snWr",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"orders",
+								"F29rnnqLSfV8BhwBB2ZtL7K1zuDjPimwN6LCW4w6snWr"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Market Pulse",
+			"item": [
+				{
+					"name": "Get Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/market-pulse/categories",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"market-pulse",
+								"categories"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tokens by Category",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/market-pulse/tokens/community",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"market-pulse",
+								"tokens",
+								"community"
+							]
+						},
+						"description": "Returns tokens with full metadata including Jupiter token metadata"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api/v1"
+		},
+		{
+			"key": "mint_account",
+			"value": "So11111111111111111111111111111111111111112"
+		},
+		{
+			"key": "wallet_account",
+			"value": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+		},
+		{
+			"key": "order_id",
+			"value": "OrderAddress123"
+		}
+	]
+}
