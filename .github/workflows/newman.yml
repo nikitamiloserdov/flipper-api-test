@@ -12,19 +12,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Newman
+      - name: 📦 Install Newman
         run: npm install -g newman
 
-      - name: Run Postman collection
+      # 🔍 Диагностика — ОБЯЗАТЕЛЬНО оставь
+      - name: 🔍 Debug repository structure
         run: |
-          newman run postman/Flipper_API.postman_collection.json \
+          echo "Current directory:"
+          pwd
+          echo "Root files:"
+          ls -la
+          echo "Postman folder:"
+          ls -la postman || true
+
+      - name: ▶️ Run Postman collection
+        run: |
+          newman run "postman/Flipper API.postman_collection.json" \
             --timeout-request 60000 \
             --delay-request 200
