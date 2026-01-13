@@ -1783,7 +1783,7 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://localhost:8000/api/v1"
+			"value": "https://api.dev.dex.flpp.io/api/v1"
 		},
 		{
 			"key": "mint_account",
