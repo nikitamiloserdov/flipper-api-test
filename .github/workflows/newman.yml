@@ -4,21 +4,18 @@ on:
   # Ручной запуск
   workflow_dispatch:
 
-  # Запуск по пушам / PR
+  # Пуши и PR
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
-  # Автозапуск по расписанию
-  # GitHub cron работает в UTC
+  # Cron (UTC)
   # Москва = UTC+3
   # НЕ запускаем с 22:00 до 07:00 МСК
   schedule:
-    # 07:00–21:45 МСК (UTC 04–18)
-    - cron: "*/15 4-18 * * *"
-    # 21:00–21:45 МСК (UTC 18)
-    - cron: "*/15 19-21 * * *"
+    - cron: "*/15 4-18 * * *"   # 07:00–21:45 МСК
+    - cron: "*/15 19-21 * * *"  # 21:00–21:45 МСК
 
 jobs:
   newman:
@@ -31,13 +28,13 @@ jobs:
 
     steps:
       # =========================================================
-      # 📥 Клонируем репозиторий (ветка main)
+      # 📥 Checkout main
       # =========================================================
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
       # =========================================================
-      # 🟢 Устанавливаем Node.js (нужен для Newman)
+      # 🟢 Node.js
       # =========================================================
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
@@ -45,50 +42,52 @@ jobs:
           node-version: 20
 
       # =========================================================
-      # 📦 Устанавливаем Newman
+      # 📦 Newman
       # =========================================================
       - name: 📦 Install Newman
         run: npm install -g newman
 
       # =========================================================
-      # 🧾 Устанавливаем HTML-репортёр
+      # 🧾 HTML reporter
       # =========================================================
       - name: 🧾 Install Newman HTML Reporter
         run: npm install -g newman-reporter-htmlextra
 
       # =========================================================
-      # 🆔 Генерируем RUN_ID (дата + время)
+      # 🆔 RUN_ID
       # =========================================================
       - name: 🆔 Generate RUN_ID
         run: |
           RUN_ID=$(date +"%Y-%m-%d_%H-%M-%S")
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Run ID: $RUN_ID"
 
       # =========================================================
-      # 🏷️ Определяем тип прогона:
-      # Manual / Auto / Night
+      # 🏷️ Определяем RUN_TYPE (Manual / Auto / Night)
       # =========================================================
       - name: 🏷️ Determine RUN_TYPE
         run: |
-          RUN_TYPE="Auto"
-
-          # Ручной запуск
+          # 1. Manual имеет абсолютный приоритет
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RUN_TYPE="Manual"
-          fi
+          else
+            # 2. Авто-запуск
+            RUN_TYPE="Auto"
 
-          # Ночной запуск (22:00–07:00 МСК → 19–04 UTC)
-          HOUR_UTC=$(date -u +"%H")
-          if [ "$HOUR_UTC" -ge 19 ] || [ "$HOUR_UTC" -lt 4 ]; then
-            RUN_TYPE="Night"
+            # Night только для cron
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              HOUR_UTC=$(date -u +"%H")
+              # Night = 22:00–07:00 МСК → 19–04 UTC
+              if [ "$HOUR_UTC" -ge 19 ] || [ "$HOUR_UTC" -lt 4 ]; then
+                RUN_TYPE="Night"
+              fi
+            fi
           fi
 
           echo "RUN_TYPE=$RUN_TYPE" >> $GITHUB_ENV
           echo "Run type: $RUN_TYPE"
 
       # =========================================================
-      # ▶️ Запуск Postman коллекции
+      # ▶️ Newman run
       # =========================================================
       - name: ▶️ Run Postman collection
         continue-on-error: true
@@ -106,17 +105,16 @@ jobs:
           cp reports/newman-report.html public/runs/${RUN_ID}__${RUN_TYPE}/index.html
 
       # =========================================================
-      # 📤 Загружаем отчёты как artifacts
+      # 📂 Подготовка результатов для TestOps
       # =========================================================
-      - name: 📤 Upload Newman reports
+      - name: 📂 Prepare TestOps results
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: newman-reports
-          path: reports/
+        run: |
+          mkdir -p testops-results
+          cp reports/newman-report.xml testops-results/
 
       # =========================================================
-      # 📊 Публикуем JUnit в GitHub Summary
+      # 📊 JUnit Summary
       # =========================================================
       - name: 📊 Publish test results (JUnit → Summary)
         if: always()
@@ -125,7 +123,7 @@ jobs:
           files: reports/newman-report.xml
 
       # =========================================================
-      # 📥 Устанавливаем allurectl (CLI для TestOps)
+      # 📥 Install allurectl
       # =========================================================
       - name: 📥 Install allurectl
         if: always()
@@ -135,7 +133,7 @@ jobs:
           sudo mv allurectl /usr/local/bin/allurectl
 
       # =========================================================
-      # 📊 Загружаем результаты в Allure TestOps
+      # 📊 Upload to Allure TestOps (БЕЗ ТЕГОВ)
       # =========================================================
       - name: 📊 Upload results to Allure TestOps
         if: always()
@@ -147,17 +145,14 @@ jobs:
           export ALLURE_ENDPOINT=${TESTOPS_ENDPOINT}
           export ALLURE_TOKEN=${TESTOPS_TOKEN}
 
-          allurectl upload reports/newman-report.xml \
+          allurectl upload testops-results \
             --project-id ${TESTOPS_PROJECT_ID} \
-            --launch-name "Flipper API • ${RUN_TYPE} • ${RUN_ID}" \
-            --launch-tags "api,newman,${RUN_TYPE}"
+            --launch-name "Flipper API • ${RUN_TYPE} • ${RUN_ID}"
 
-          # Формируем ссылку вручную (СТАБИЛЬНО)
           echo "ALLURE_LAUNCH_URL=${TESTOPS_ENDPOINT}/project/${TESTOPS_PROJECT_ID}/launches" >> $GITHUB_ENV
 
-
       # =========================================================
-      # 🐍 Устанавливаем Python
+      # 🐍 Python
       # =========================================================
       - name: 🐍 Setup Python
         if: always()
@@ -165,15 +160,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      # =========================================================
-      # 📦 Устанавливаем Python-зависимости
-      # =========================================================
       - name: 📦 Install Python dependencies
         if: always()
         run: pip install requests
 
       # =========================================================
-      # 📩 Отправляем отчёт в Telegram
+      # 📩 Telegram
       # =========================================================
       - name: 📩 Send Telegram report
         if: always()
@@ -187,7 +179,7 @@ jobs:
         run: python scripts/send_telegram_report.py
 
       # =========================================================
-      # 🚀 Деплой HTML-отчёта в GitHub Pages
+      # 🚀 GitHub Pages
       # =========================================================
       - name: 🚀 Deploy to GitHub Pages
         if: always()
@@ -208,16 +200,3 @@ jobs:
           git add runs .nojekyll
           git commit -m "deploy: ${RUN_ID} (${RUN_TYPE})" || echo "Nothing to commit"
           git push origin gh-pages
-
-      # =========================================================
-      # 🔗 Публикуем ссылку на HTML-отчёт в Summary
-      # =========================================================
-      - name: 🔗 Publish report link to Summary
-        if: always()
-        run: |
-          echo "## 🧪 Newman API Test Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Тип прогона:** ${RUN_TYPE}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **HTML Report:**" >> $GITHUB_STEP_SUMMARY
-          echo "https://nikitamiloserdov.github.io/fl-test/runs/${RUN_ID}__${RUN_TYPE}/" >> $GITHUB_STEP_SUMMARY
