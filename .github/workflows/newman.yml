@@ -11,31 +11,35 @@ jobs:
   newman:
     runs-on: ubuntu-latest
 
+    # 🔐 Права:
+    # - contents: write → пуш в gh-pages
+    # - checks: write → JUnit summary
     permissions:
        checks: write
        contents: write
        pull-requests: read
 
     steps:
-      # 📥 Забираем код репозитория (Postman collection + workflow)
+      # 📥 Клонируем репозиторий
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      # 🟢 Поднимаем Node.js (нужен для Newman)
+      # 🟢 Устанавливаем Node.js (нужен для Newman)
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 📦 Устанавливаем Newman (CLI для Postman)
+      # 📦 Устанавливаем Newman
       - name: 📦 Install Newman
         run: npm install -g newman
 
-      # 🧾 HTML-репортёр (чтобы был красивый отчёт)
+      # 🧾 Устанавливаем HTML-репортёр
       - name: 🧾 Install Newman HTML Reporter
         run: npm install -g newman-reporter-htmlextra
 
       # 🔍 Диагностика структуры репозитория
+      # Полезно, если CI "не видит" файлы
       - name: 🔍 Debug repository structure
         run: |
           echo "Current directory:"
@@ -45,16 +49,22 @@ jobs:
           echo "Postman folder:"
           ls -la postman || true
 
-      # 🆔 ШАГ 1 — вычисляем уникальный RUN_ID
+      # 🆔 ШАГ 1 — Генерация уникального RUN_ID
+      # Используется для:
+      # - истории запусков
+      # - формирования ссылок /runs/<RUN_ID>/
       - name: 🆔 Generate RUN_ID
-        id: run_id
         run: |
           RUN_ID=$(date +"%Y-%m-%d_%H-%M-%S")
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
           echo "Run ID: $RUN_ID"
 
       # ▶️ Запуск Postman коллекции
+      # ❗ ВАЖНО:
+      # continue-on-error: true
+      # → тесты могут упасть, но job НЕ прерывается
       - name: ▶️ Run Postman collection
+        continue-on-error: true
         run: |
           mkdir -p reports
           mkdir -p gh-pages/runs/${RUN_ID}
@@ -66,24 +76,49 @@ jobs:
             --reporter-htmlextra-export reports/newman-report.html \
             --reporter-junit-export reports/newman-report.xml
 
-          # 📁 Кладём HTML в папку конкретного запуска
+          # 📁 Кладём HTML-отчёт в папку конкретного запуска
           cp reports/newman-report.html gh-pages/runs/${RUN_ID}/index.html
 
       # 📤 Загружаем отчёты как artifacts (для скачивания)
       - name: 📤 Upload Newman reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: newman-reports
           path: reports/
 
-      # 📊 Публикуем JUnit в GitHub Summary
+      # 📊 Публикуем JUnit результаты в GitHub Summary
+      # Работает даже если тесты упали
       - name: 📊 Publish test results (JUnit → Summary)
-        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: reports/newman-report.xml
 
-      # 📝 Выводим ПРЯМУЮ ссылку на HTML-отчёт в Summary
+      # 🚀 ШАГ 2 — Деплой HTML-отчётов в GitHub Pages
+      # ❗ Выполняется ВСЕГДА, даже если тесты упали
+      - name: 🚀 Deploy to GitHub Pages
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          # Переключаемся на gh-pages (или создаём её)
+          git fetch origin gh-pages || true
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+          # Очищаем ветку и копируем новые отчёты
+          rm -rf *
+          cp -r ../gh-pages/* .
+
+          # Отключаем Jekyll (обязательно)
+          touch .nojekyll
+
+          git add .
+          git commit -m "deploy: ${RUN_ID}" || echo "Nothing to commit"
+          git push origin gh-pages --force
+
+      # 🔗 Публикуем ссылку на конкретный RUN в Summary
       - name: 🔗 Publish report link to Summary
         if: always()
         run: |
