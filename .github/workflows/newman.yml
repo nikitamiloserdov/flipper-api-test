@@ -23,6 +23,9 @@ jobs:
       - name: 📦 Install Newman
         run: npm install -g newman
 
+      - name: 🧾 Install Newman HTML Reporter
+        run: npm install -g newman-reporter-htmlextra
+
       # 🔍 Диагностика — ОБЯЗАТЕЛЬНО оставь
       - name: 🔍 Debug repository structure
         run: |
@@ -44,9 +47,8 @@ jobs:
             --reporter-htmlextra-export reports/newman-report.html \
             --reporter-junit-export reports/newman-report.xml
 
-      - name: Upload Newman reports
+      - name: 📤 Upload Newman reports
         uses: actions/upload-artifact@v4
         with:
           name: newman-reports
           path: reports/
-
