@@ -67,7 +67,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p reports
-          mkdir -p gh-pages/runs/${RUN_ID}
+          mkdir -p public/runs/${RUN_ID}
 
           newman run "postman/Flipper API.postman_collection.json" \
             --timeout-request 60000 \
@@ -77,7 +77,7 @@ jobs:
             --reporter-junit-export reports/newman-report.xml
 
           # 📁 Кладём HTML-отчёт в папку конкретного запуска
-          cp reports/newman-report.html gh-pages/runs/${RUN_ID}/index.html
+          cp reports/newman-report.html public/runs/${RUN_ID}/index.html
 
       # 📤 Загружаем отчёты как artifacts (для скачивания)
       - name: 📤 Upload Newman reports
@@ -103,15 +103,20 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          # Переключаемся на gh-pages (или создаём её)
+          # 🔒 Сохраняем отчёты во временную папку
+          cp -r public /tmp/public
+
+          # 🌿 Переключаемся на gh-pages (или создаём с нуля)
           git fetch origin gh-pages || true
           git checkout gh-pages || git checkout --orphan gh-pages
 
-          # Очищаем ветку и копируем новые отчёты
+          # 🧹 Очищаем ветку
           rm -rf *
-          cp -r ../gh-pages/* .
 
-          # Отключаем Jekyll (обязательно)
+          # 📂 Возвращаем отчёты
+          cp -r /tmp/public/* .
+
+          # 🚫 Отключаем Jekyll (обязательно)
           touch .nojekyll
 
           git add .
