@@ -12,26 +12,30 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write
-      checks: write
-      pull-requests: read
+       checks: write
+       contents: write
+       pull-requests: read
 
     steps:
+      # 📥 Забираем код репозитория (Postman collection + workflow)
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
+      # 🟢 Поднимаем Node.js (нужен для Newman)
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # 📦 Устанавливаем Newman (CLI для Postman)
       - name: 📦 Install Newman
         run: npm install -g newman
 
+      # 🧾 HTML-репортёр (чтобы был красивый отчёт)
       - name: 🧾 Install Newman HTML Reporter
         run: npm install -g newman-reporter-htmlextra
 
-      # 🔍 Диагностика — ОБЯЗАТЕЛЬНО оставь
+      # 🔍 Диагностика структуры репозитория
       - name: 🔍 Debug repository structure
         run: |
           echo "Current directory:"
@@ -41,11 +45,20 @@ jobs:
           echo "Postman folder:"
           ls -la postman || true
 
-      # ▶️ Запуск тестов
+      # 🆔 ШАГ 1 — вычисляем уникальный RUN_ID
+      - name: 🆔 Generate RUN_ID
+        id: run_id
+        run: |
+          RUN_ID=$(date +"%Y-%m-%d_%H-%M-%S")
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "Run ID: $RUN_ID"
+
+      # ▶️ Запуск Postman коллекции
       - name: ▶️ Run Postman collection
         run: |
           mkdir -p reports
-        
+          mkdir -p gh-pages/runs/${RUN_ID}
+
           newman run "postman/Flipper API.postman_collection.json" \
             --timeout-request 60000 \
             --delay-request 200 \
@@ -53,35 +66,28 @@ jobs:
             --reporter-htmlextra-export reports/newman-report.html \
             --reporter-junit-export reports/newman-report.xml
 
-      # 📤 Artifacts (история для скачивания)
+          # 📁 Кладём HTML в папку конкретного запуска
+          cp reports/newman-report.html gh-pages/runs/${RUN_ID}/index.html
+
+      # 📤 Загружаем отчёты как artifacts (для скачивания)
       - name: 📤 Upload Newman reports
         uses: actions/upload-artifact@v4
         with:
           name: newman-reports
           path: reports/
 
-      # 📊 Summary в GitHub (JUnit)
+      # 📊 Публикуем JUnit в GitHub Summary
       - name: 📊 Publish test results (JUnit → Summary)
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: reports/newman-report.xml
 
-      # 🕒 Подготовка папки с таймстемпом
-      - name: 🕒 Prepare run folder
-        id: runfolder
+      # 📝 Выводим ПРЯМУЮ ссылку на HTML-отчёт в Summary
+      - name: 🔗 Publish report link to Summary
+        if: always()
         run: |
-          RUN_ID=$(date +"%Y-%m-%d_%H-%M-%S")
-          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-          mkdir -p gh-pages/runs/$RUN_ID
-          cp reports/newman-report.html gh-pages/runs/$RUN_ID/index.html
-          cp reports/newman-report.html gh-pages/index.html
-
-      # 🌍 Deploy GitHub Pages (с историей)
-      - name: 🌍 Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: gh-pages
-          keep_files: true
+          echo "## 🧪 Newman API Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **HTML Report:**" >> $GITHUB_STEP_SUMMARY
+          echo "https://nikitamiloserdov.github.io/flipper-api-test/runs/${RUN_ID}/" >> $GITHUB_STEP_SUMMARY
