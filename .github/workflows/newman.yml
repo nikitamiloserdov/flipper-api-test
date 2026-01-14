@@ -130,4 +130,4 @@ jobs:
           echo "## 🧪 Newman API Test Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 **HTML Report:**" >> $GITHUB_STEP_SUMMARY
-          echo "https://nikitamiloserdov.github.io/flipper-api-test/runs/${RUN_ID}/" >> $GITHUB_STEP_SUMMARY
+          echo "https://nikitamiloserdov.github.io/fl-test/runs/${RUN_ID}/" >> $GITHUB_STEP_SUMMARY
