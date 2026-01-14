@@ -63,4 +63,3 @@ jobs:
         if: always()
         with:
           files: reports/newman-report.xml
-
