@@ -43,3 +43,10 @@ jobs:
             --reporters cli,htmlextra,junit \
             --reporter-htmlextra-export reports/newman-report.html \
             --reporter-junit-export reports/newman-report.xml
+
+      - name: Upload Newman reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-reports
+          path: reports/
+
