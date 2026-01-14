@@ -128,10 +128,10 @@ jobs:
 
           LAUNCH_JSON=$(allurectl launch create \
             --project-id ${TESTOPS_PROJECT_ID} \
-            --name "Flipper API • ${RUN_TYPE} • ${RUN_ID}" \
+            --launch-name "Flipper API • ${RUN_TYPE} • ${RUN_ID}" \
             --output json)
 
-          echo "ALLURE_LAUNCH_ID=$(echo $LAUNCH_JSON | jq -r '.id')" >> $GITHUB_ENV
+          echo "ALLURE_LAUNCH_ID=$(echo $LAUNCH_JSON | jq -r '.ID')" >> $GITHUB_ENV
 
       # =========================================================
       # 📊 Upload results to launch
