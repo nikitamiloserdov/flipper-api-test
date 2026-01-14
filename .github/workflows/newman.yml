@@ -55,7 +55,7 @@ jobs:
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
 
       # =========================================================
-      # 🏷️ RUN_TYPE (Manual / Auto / Night)
+      # 🏷️ RUN_TYPE
       # =========================================================
       - name: 🏷️ Determine RUN_TYPE
         run: |
@@ -70,7 +70,6 @@ jobs:
               fi
             fi
           fi
-
           echo "RUN_TYPE=$RUN_TYPE" >> $GITHUB_ENV
 
       # =========================================================
@@ -109,7 +108,7 @@ jobs:
           sudo mv allurectl /usr/local/bin/allurectl
 
       # =========================================================
-      # 📊 Upload to Allure TestOps (без тегов)
+      # 📊 Upload to Allure TestOps
       # =========================================================
       - name: 📊 Upload results to Allure TestOps
         if: always()
@@ -155,7 +154,7 @@ jobs:
         run: python scripts/send_telegram_report.py
 
       # =========================================================
-      # 🚀 Deploy to GH Pages (НА КАЖДЫЙ RUN)
+      # 🚀 Deploy to GH Pages
       # =========================================================
       - name: 🚀 Deploy to GitHub Pages
         if: always()
@@ -177,25 +176,18 @@ jobs:
           git commit -m "deploy run ${RUN_ID}" || echo "Nothing to commit"
           git push origin gh-pages
 
-
       # =========================================================
-      # 🧾 Publish workflow summary (корректный, без Markdown-косяков)
+      # 🧾 Publish workflow summary (БЕЗ ЛОМАНИЯ ССЫЛКИ)
       # =========================================================
       - name: 🧾 Publish workflow summary
         if: always()
         run: |
-          {
-            echo "## 🧪 Flipper API – Newman"
-            echo ""
-            echo "**Тип прогона:** ${RUN_TYPE}"
-            echo "**Статус:** ${{ job.status }}"
-            echo ""
-            echo "🔗 **HTML Report:**"
-            echo ""
-            echo "```"
-            echo "https://nikitamiloserdov.github.io/fl-test/runs/${RUN_ID}/"
-            echo "```"
-          } >> $GITHUB_STEP_SUMMARY
-
-
-
+          echo "## 🧪 Flipper API – Newman" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Тип прогона:** ${RUN_TYPE}" >> $GITHUB_STEP_SUMMARY
+          echo "**Статус:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **HTML Report:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "https://nikitamiloserdov.github.io/fl-test/runs/${RUN_ID}/" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
