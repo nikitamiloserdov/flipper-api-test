@@ -29,7 +29,6 @@ message = f"""
 
 Repo: {REPO}
 Тип прогона: {RUN_TYPE}
-Branch: main
 Status: {status}
 
 Tests summary:
@@ -39,7 +38,7 @@ Tests summary:
 
 Links:
 • 🔗 HTML Report:
-https://nikitamiloserdov.github.io/fl-test/runs/{RUN_ID}__{RUN_TYPE}/
+https://nikitamiloserdov.github.io/fl-test/runs/{RUN_ID}/
 """.strip()
 
 if ALLURE_LAUNCH_URL:
@@ -49,7 +48,7 @@ if ALLURE_LAUNCH_URL:
 {ALLURE_LAUNCH_URL}
 """
 
-response = requests.post(
+requests.post(
     f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
     json={
         "chat_id": CHAT_ID,
@@ -57,6 +56,4 @@ response = requests.post(
         "parse_mode": "HTML"
     },
     timeout=10
-)
-
-response.raise_for_status()
+).raise_for_status()
