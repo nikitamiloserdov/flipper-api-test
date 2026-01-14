@@ -110,18 +110,18 @@ jobs:
           git fetch origin gh-pages || true
           git checkout gh-pages || git checkout --orphan gh-pages
 
-          # 🧹 Очищаем ветку
-          rm -rf *
+          # 📂 Убеждаемся, что runs существует
+          mkdir -p runs
 
-          # 📂 Возвращаем отчёты
-          cp -r /tmp/public/* .
+          # ➕ Добавляем НОВЫЙ запуск (не трогаем старые)
+          cp -r /tmp/public/runs/${RUN_ID} runs/
 
           # 🚫 Отключаем Jekyll (обязательно)
           touch .nojekyll
 
-          git add .
+          git add runs .nojekyll
           git commit -m "deploy: ${RUN_ID}" || echo "Nothing to commit"
-          git push origin gh-pages --force
+          git push origin gh-pages
 
       # 🔗 Публикуем ссылку на конкретный RUN в Summary
       - name: 🔗 Publish report link to Summary
